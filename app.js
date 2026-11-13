@@ -24,11 +24,12 @@ const modalRoot = document.getElementById("modal-root");
 
 const state = { campaigns: readStoredCampaigns() };
 const ui = {
-  screen: "home",
+  screen: "hub",
   campaignId: null,
+  sheetId: null,
   selectedPlayerId: null,
   flashPlayerId: null,
-  certificateFrom: "home",
+  certificateFrom: "campaigns",
 };
 
 let previewUrl = null;
@@ -322,7 +323,48 @@ function withNote(content) {
   return `${content}<p class="save-note">Salvo neste navegador. Outro computador ou outro navegador não vê estas campanhas.</p>`;
 }
 
-function renderHome() {
+function updateTopbar() {
+  const sub = document.querySelector(".brand-sub");
+  if (!sub) return;
+  const labels = {
+    hub: "Escolha o módulo",
+    campaigns: "Pontuação do MVP",
+    campaign: "Pontuação do MVP",
+    certificate: "Certificado de MVP",
+    sheets: "Fichas de personagem",
+    sheet: "Ficha de personagem",
+  };
+  sub.textContent = labels[ui.screen] || "OP-MVP";
+}
+
+function renderHub() {
+  const sheetCount = window.Sheets ? window.Sheets.getCount() : 0;
+  return `
+    <div class="page-head">
+      <div>
+        <p class="kicker">Ordem Paranormal</p>
+        <h2>OP-MVP</h2>
+        <p class="lede">Escolha se quer marcar a pontuação da sessão ou abrir as fichas dos agentes.</p>
+      </div>
+    </div>
+    <div class="hub-grid">
+      <button type="button" class="hub-card" data-action="open-campaigns">
+        <p class="kicker">Sessão</p>
+        <h3>Campanhas</h3>
+        <p>Cadastre a mesa, marque ações e defina o MVP da sessão.</p>
+        <span class="hub-meta">${state.campaigns.length === 1 ? "1 campanha" : `${state.campaigns.length} campanhas`}</span>
+      </button>
+      <button type="button" class="hub-card" data-action="open-sheets">
+        <p class="kicker">Agentes</p>
+        <h3>Fichas</h3>
+        <p>Abra, edite e exporte as fichas de personagem da Ordem.</p>
+        <span class="hub-meta">${sheetCount === 1 ? "1 ficha" : `${sheetCount} fichas`}</span>
+      </button>
+    </div>
+  `;
+}
+
+function renderCampaigns() {
   const cards = state.campaigns.length
     ? `<div class="campaign-grid">${state.campaigns.map(renderCampaignCard).join("")}</div>`
     : `<div class="empty"><h3>Nenhuma campanha ainda</h3><p>Crie a primeira mesa e envie o banner.</p></div>`;
@@ -330,6 +372,7 @@ function renderHome() {
   return withNote(`
     <div class="page-head">
       <div>
+        <button type="button" class="btn btn-ghost" data-action="go-hub">Início</button>
         <p class="kicker">Ordem Paranormal</p>
         <h2>Campanhas</h2>
         <p class="lede">Crie uma campanha com banner, cadastre os jogadores e marque os pontos durante a sessão para definir o MVP.</p>
@@ -353,7 +396,7 @@ function renderCampaignCard(campaign) {
       </div>
       <div class="card-actions">
         <button type="button" class="btn btn-ghost btn-small" data-action="edit-campaign" data-id="${esc(campaign.id)}">Editar</button>
-        <button type="button" class="btn btn-primary btn-small" data-action="open-certificate" data-id="${esc(campaign.id)}" data-from="home">MVP</button>
+        <button type="button" class="btn btn-primary btn-small" data-action="open-certificate" data-id="${esc(campaign.id)}" data-from="campaigns">MVP</button>
         <button type="button" class="btn btn-danger btn-small" data-action="delete-campaign" data-id="${esc(campaign.id)}">Excluir</button>
       </div>
     </article>
@@ -509,7 +552,7 @@ function renderCampaign(campaign, flashId) {
   return withNote(`
     <div class="mesa">
     <div class="toolbar">
-      <button type="button" class="btn btn-ghost" data-action="go-home">Campanhas</button>
+      <button type="button" class="btn btn-ghost" data-action="open-campaigns">Campanhas</button>
       <div class="toolbar-right">
         <button type="button" class="btn btn-ghost" data-action="edit-campaign" data-id="${esc(campaign.id)}">Editar</button>
         <button type="button" class="btn btn-primary" data-action="open-certificate" data-id="${esc(campaign.id)}" data-from="campaign">MVP</button>
@@ -635,20 +678,36 @@ function render(options = {}) {
     if (ui.screen === "campaign" || ui.screen === "certificate") {
       campaign = currentCampaign();
       if (!campaign) {
-        ui.screen = "home";
+        ui.screen = "campaigns";
         ui.campaignId = null;
         ui.selectedPlayerId = null;
       }
     }
+    if (ui.screen === "sheet" && window.Sheets && !window.Sheets.get(ui.sheetId)) {
+      ui.screen = "sheets";
+      ui.sheetId = null;
+    }
     const onCertificate = ui.screen === "certificate" && Boolean(campaign);
+    const onSheet = ui.screen === "sheet" || ui.screen === "sheets";
     document.body.classList.toggle("is-campaign", ui.screen === "campaign" && Boolean(campaign));
     document.body.classList.toggle("is-certificate", onCertificate);
-    document.title = onCertificate
-      ? `Certificado de MVP — ${campaign.nome}`
-      : "Ordem Paranormal-MVP (OP-MVP)";
-    app.innerHTML = onCertificate
-      ? renderCertificate(campaign)
-      : (ui.screen === "campaign" && campaign ? renderCampaign(campaign, flashId) : renderHome());
+    document.body.classList.toggle("is-sheets", onSheet);
+    document.body.classList.toggle("is-hub", ui.screen === "hub");
+    if (onCertificate) {
+      document.title = `Certificado de MVP — ${campaign.nome}`;
+    } else if (window.Sheets && (ui.screen === "sheets" || ui.screen === "sheet")) {
+      document.title = window.Sheets.titleFor(ui.screen) || "OP-MVP";
+    } else {
+      document.title = "Ordem Paranormal-MVP (OP-MVP)";
+    }
+    updateTopbar();
+    let html = "";
+    if (onCertificate) html = renderCertificate(campaign);
+    else if (ui.screen === "campaign" && campaign) html = renderCampaign(campaign, flashId);
+    else if (ui.screen === "campaigns") html = renderCampaigns();
+    else if ((ui.screen === "sheets" || ui.screen === "sheet") && window.Sheets) html = window.Sheets.render(ui.screen);
+    else html = renderHub();
+    app.innerHTML = html;
     if (position) {
       applyScroll(position);
       requestAnimationFrame(() => applyScroll(position));
@@ -901,7 +960,7 @@ function deleteCampaign(campaignId) {
     return;
   }
   if (ui.campaignId === campaignId) {
-    ui.screen = "home";
+    ui.screen = "campaigns";
     ui.campaignId = null;
     ui.selectedPlayerId = null;
   }
@@ -990,7 +1049,16 @@ function onClick(event) {
       closeModal();
       break;
     case "go-home":
-      ui.screen = "home";
+    case "go-hub":
+      ui.screen = "hub";
+      ui.campaignId = null;
+      ui.sheetId = null;
+      ui.selectedPlayerId = null;
+      closeModal();
+      render();
+      break;
+    case "open-campaigns":
+      ui.screen = "campaigns";
       ui.campaignId = null;
       ui.selectedPlayerId = null;
       closeModal();
@@ -1005,7 +1073,7 @@ function onClick(event) {
       break;
     }
     case "open-certificate":
-      ui.certificateFrom = el.dataset.from === "campaign" ? "campaign" : "home";
+      ui.certificateFrom = el.dataset.from === "campaign" ? "campaign" : "campaigns";
       ui.screen = "certificate";
       if (id) ui.campaignId = id;
       closeModal();
@@ -1015,7 +1083,7 @@ function onClick(event) {
       if (ui.certificateFrom === "campaign") {
         ui.screen = "campaign";
       } else {
-        ui.screen = "home";
+        ui.screen = "campaigns";
         ui.campaignId = null;
         ui.selectedPlayerId = null;
       }
@@ -1083,6 +1151,7 @@ function onClick(event) {
       resetSession(id);
       break;
     default:
+      if (window.Sheets && window.Sheets.handleAction(action, el, id)) break;
       break;
   }
 }
@@ -1096,11 +1165,14 @@ function onSubmit(event) {
   } else if (form.id === "player-form") {
     event.preventDefault();
     void savePlayer(form);
+  } else if (window.Sheets && window.Sheets.handleSubmit(form)) {
+    event.preventDefault();
   }
 }
 
 function onChange(event) {
   const target = event.target;
+  if (window.Sheets && window.Sheets.handleChange(target)) return;
   if (target instanceof HTMLSelectElement && target.dataset.customTarget) {
     const field = document.querySelector(target.dataset.customTarget);
     if (!field) return;
@@ -1119,6 +1191,11 @@ function onChange(event) {
   if (!file || !box) return;
   previewUrl = URL.createObjectURL(file);
   box.innerHTML = previewMarkup(previewUrl, target.dataset.previewShape === "token");
+}
+
+function onInput(event) {
+  const target = event.target;
+  if (window.Sheets && window.Sheets.handleInput(target)) return;
 }
 
 function onKeydown(event) {
@@ -1141,5 +1218,24 @@ document.addEventListener("mousedown", (event) => {
 document.addEventListener("click", onClick);
 document.addEventListener("submit", onSubmit);
 document.addEventListener("change", onChange);
+document.addEventListener("input", onInput);
 document.addEventListener("keydown", onKeydown);
-render();
+
+window.OP = {
+  esc,
+  uid,
+  cleanName,
+  imgSrc,
+  initials,
+  readImage,
+  fieldValue,
+  fieldFile,
+  showError,
+  openModal,
+  closeModal,
+  openConfirm,
+  announce,
+  render,
+  ui,
+  previewMarkup,
+};
