@@ -1,20 +1,85 @@
 const STORAGE_KEY = "op-mvp-data";
 
-const ACTIONS = [
-  { id: "pista-comum", label: "Encontrou pista comum", points: 5 },
-  { id: "pista-importante", label: "Encontrou pista importante", points: 10 },
-  { id: "enigma", label: "Resolveu enigma", points: 10 },
-  { id: "ideia", label: "Teve uma ideia importante", points: 10 },
-  { id: "aliado", label: "Salvou um aliado", points: 10 },
-  { id: "inimigo", label: "Derrotou inimigo", points: 5 },
-  { id: "chefe", label: "Derrotou chefe", points: 15 },
-  { id: "estrategia", label: "Criou estratégia decisiva", points: 10 },
-  { id: "interpretacao", label: "Boa interpretação de personagem", points: 5 },
-  { id: "momento", label: "Momento marcante ou emocionante", points: 10 },
-  { id: "criativa", label: "Solução criativa para um problema", points: 5 },
-  { id: "objetivo", label: "Completou objetivo da missão", points: 15 },
-  { id: "salvou-grupo", label: "Fez uma jogada que salvou o grupo", points: 20 },
+// Ações do MVP agrupadas. Pontos negativos são penalidades.
+const ACTION_GROUPS = [
+  ["investigacao", "Investigação"],
+  ["combate", "Combate e paranormal"],
+  ["interpretacao", "Interpretação"],
+  ["equipe", "Equipe e mesa"],
+  ["penalidade", "Penalidades"],
 ];
+
+const ACTIONS = [
+  // Investigação
+  { id: "pista-comum", grupo: "investigacao", label: "Encontrou pista comum", points: 5 },
+  { id: "pista-importante", grupo: "investigacao", label: "Encontrou pista importante", points: 10 },
+  { id: "enigma", grupo: "investigacao", label: "Resolveu enigma", points: 10 },
+  { id: "ideia", grupo: "investigacao", label: "Teve uma ideia importante", points: 10 },
+  { id: "ligou-pistas", grupo: "investigacao", label: "Ligou pistas e chegou a uma conclusão", points: 10 },
+  { id: "fraqueza", grupo: "investigacao", label: "Descobriu a fraqueza de uma criatura", points: 10 },
+  { id: "misterio", grupo: "investigacao", label: "Desvendou o mistério principal", points: 20 },
+  { id: "furtivo", grupo: "investigacao", label: "Infiltração ou fuga bem-sucedida", points: 5 },
+  // Combate e paranormal
+  { id: "inimigo", grupo: "combate", label: "Derrotou inimigo", points: 5 },
+  { id: "chefe", grupo: "combate", label: "Derrotou chefe", points: 15 },
+  { id: "critico", grupo: "combate", label: "Acerto crítico decisivo", points: 5 },
+  { id: "protegeu", grupo: "combate", label: "Protegeu um aliado (entrou na frente do golpe)", points: 10 },
+  { id: "ritual-decisivo", grupo: "combate", label: "Conjurou um ritual decisivo", points: 10 },
+  { id: "resistiu", grupo: "combate", label: "Resistiu a um efeito paranormal perigoso", points: 5 },
+  { id: "estrategia", grupo: "combate", label: "Criou estratégia decisiva", points: 10 },
+  { id: "objetivo", grupo: "combate", label: "Completou objetivo da missão", points: 15 },
+  // Interpretação
+  { id: "interpretacao", grupo: "interpretacao", label: "Boa interpretação de personagem", points: 5 },
+  { id: "momento", grupo: "interpretacao", label: "Momento marcante ou emocionante", points: 10 },
+  { id: "criativa", grupo: "interpretacao", label: "Solução criativa para um problema", points: 5 },
+  { id: "convenceu", grupo: "interpretacao", label: "Convenceu ou negociou com um NPC importante", points: 10 },
+  { id: "medo", grupo: "interpretacao", label: "Interpretou bem o medo e o horror", points: 5 },
+  { id: "historia", grupo: "interpretacao", label: "Trouxe a história do personagem para a cena", points: 5 },
+  { id: "riso", grupo: "interpretacao", label: "Fez a mesa rir sem quebrar o clima", points: 5 },
+  { id: "sacrificio", grupo: "interpretacao", label: "Sacrifício heroico", points: 20 },
+  // Equipe e mesa
+  { id: "aliado", grupo: "equipe", label: "Salvou um aliado", points: 10 },
+  { id: "estabilizou", grupo: "equipe", label: "Estabilizou ou curou alguém morrendo", points: 10 },
+  { id: "acalmou", grupo: "equipe", label: "Acalmou um aliado enlouquecendo", points: 10 },
+  { id: "combo", grupo: "equipe", label: "Jogada em equipe (combo com aliado)", points: 10 },
+  { id: "salvou-grupo", grupo: "equipe", label: "Fez uma jogada que salvou o grupo", points: 20 },
+  { id: "incluiu", grupo: "equipe", label: "Deu espaço para outro jogador brilhar", points: 5 },
+  { id: "organizou", grupo: "equipe", label: "Anotou e organizou as pistas para o grupo", points: 5 },
+  { id: "pontual", grupo: "equipe", label: "Chegou no horário e com a ficha pronta", points: 5 },
+  // Penalidades
+  { id: "pen-distraido", grupo: "penalidade", label: "Distraído ou no celular durante a cena", points: -5 },
+  { id: "pen-interrompeu", grupo: "penalidade", label: "Interrompeu o mestre ou outro jogador", points: -5 },
+  { id: "pen-atraso", grupo: "penalidade", label: "Chegou atrasado sem avisar", points: -5 },
+  { id: "pen-clima", grupo: "penalidade", label: "Quebrou o clima de horror de propósito", points: -5 },
+  { id: "pen-regras", grupo: "penalidade", label: "Travou o jogo discutindo regra", points: -5 },
+  { id: "pen-separou", grupo: "penalidade", label: "Separou o grupo sem motivo", points: -5 },
+  { id: "pen-fogo-amigo", grupo: "penalidade", label: "Feriu um aliado por descuido", points: -5 },
+  { id: "pen-chamou", grupo: "penalidade", label: "Chamou atenção e estragou o plano", points: -10 },
+  { id: "pen-abandonou", grupo: "penalidade", label: "Abandonou um aliado em perigo", points: -10 },
+  { id: "pen-prejudicou", grupo: "penalidade", label: "Ação egoísta que prejudicou o grupo", points: -10 },
+  { id: "pen-metagame", grupo: "penalidade", label: "Metagame (usou o que só o jogador sabia)", points: -10 },
+  { id: "pen-briga", grupo: "penalidade", label: "Briga fora do personagem", points: -15 },
+  { id: "pen-trapaca", grupo: "penalidade", label: "Trapaceou nos dados", points: -20 },
+  { id: "pen-desrespeito", grupo: "penalidade", label: "Desrespeitou alguém da mesa", points: -20 },
+];
+
+function signedPoints(value) {
+  return value < 0 ? `−${Math.abs(value)}` : `+${value}`;
+}
+
+function actionRowsHtml(disabled) {
+  return ACTION_GROUPS.map(([grupo, titulo]) => {
+    const itens = ACTIONS.filter((action) => action.grupo === grupo).map((action) => `
+      <li>
+        <button type="button" class="${classes("action-btn", action.points < 0 && "is-penalty")}" data-action="award" data-id="${esc(action.id)}" ${disabled}>
+          <span>${esc(action.label)}</span>
+          <strong>${signedPoints(action.points)}</strong>
+        </button>
+      </li>
+    `).join("");
+    return `<li class="${classes("action-group", grupo === "penalidade" && "is-penalty")}" role="presentation">${esc(titulo)}</li>${itens}`;
+  }).join("");
+}
 
 const CLASSES = ["Combatente", "Especialista", "Ocultista"];
 const RANKS = ["Recruta", "Operador", "Agente Especial", "Oficial de Operações", "Agente de Elite"];
@@ -33,6 +98,112 @@ const ui = {
 };
 
 let previewUrl = null;
+let lastHash = null;
+let hasRendered = false;
+let toastTimer = 0;
+let backdropPress = null;
+
+function isCompact() {
+  return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 860px)").matches;
+}
+
+function isTouch() {
+  return typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+}
+
+function routeHash() {
+  if (ui.screen === "campaigns") return "#/campanhas";
+  if (ui.screen === "campaign" && ui.campaignId) return `#/campanha/${encodeURIComponent(ui.campaignId)}`;
+  if (ui.screen === "certificate" && ui.campaignId) return `#/certificado/${encodeURIComponent(ui.campaignId)}`;
+  if (ui.screen === "sheets") return "#/fichas";
+  if (ui.screen === "sheet" && ui.sheetId) return `#/ficha/${encodeURIComponent(ui.sheetId)}`;
+  return "#/";
+}
+
+function currentHash() {
+  return window.location.hash && window.location.hash !== "#" ? window.location.hash : "#/";
+}
+
+function applyHash(hash) {
+  const [, name = "", rawId = ""] = String(hash || "").split("/");
+  let id = "";
+  try {
+    id = decodeURIComponent(rawId);
+  } catch (err) {
+    id = "";
+  }
+  ui.campaignId = null;
+  ui.sheetId = null;
+  ui.selectedPlayerId = null;
+  if (name === "campanhas") {
+    ui.screen = "campaigns";
+  } else if (name === "campanha" && id) {
+    ui.screen = "campaign";
+    ui.campaignId = id;
+  } else if (name === "certificado" && id) {
+    ui.screen = "certificate";
+    ui.campaignId = id;
+    ui.certificateFrom = "campaigns";
+  } else if (name === "fichas") {
+    ui.screen = "sheets";
+  } else if (name === "ficha" && id) {
+    ui.screen = "sheet";
+    ui.sheetId = id;
+  } else {
+    ui.screen = "hub";
+  }
+}
+
+function syncRoute() {
+  const hash = routeHash();
+  if (hash === lastHash) return;
+  const first = lastHash === null;
+  lastHash = hash;
+  if (first && currentHash() === hash) return;
+  try {
+    if (first) window.history.replaceState(null, "", hash);
+    else window.history.pushState(null, "", hash);
+  } catch (err) {
+    window.location.hash = hash;
+  }
+}
+
+function onPopState() {
+  const hash = currentHash();
+  if (modalRoot.innerHTML) {
+    closeModal();
+    if (hash !== lastHash && lastHash) {
+      try {
+        window.history.pushState(null, "", lastHash);
+      } catch (err) {
+        window.location.hash = lastHash;
+      }
+    }
+    return;
+  }
+  if (hash === lastHash) return;
+  if (window.Sheets && typeof window.Sheets.flush === "function") window.Sheets.flush();
+  applyHash(hash);
+  lastHash = hash;
+  render();
+}
+
+function clearToast() {
+  window.clearTimeout(toastTimer);
+  const root = document.getElementById("toast-root");
+  if (root) root.innerHTML = "";
+}
+
+function toast(message, options = {}) {
+  const root = document.getElementById("toast-root");
+  if (!root) return;
+  const button = options.actionLabel
+    ? `<button type="button" class="toast-action" data-action="${esc(options.action || "")}" data-id="${esc(options.id || "")}">${esc(options.actionLabel)}</button>`
+    : "";
+  root.innerHTML = `<div class="toast${options.tone ? ` toast-${esc(options.tone)}` : ""}" role="status"><span>${esc(message)}</span>${button}</div>`;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(clearToast, options.duration || 6000);
+}
 
 function uid() {
   if (globalThis.crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -110,7 +281,7 @@ function normalizePlayer(player) {
     classe: String(source.classe || CLASSES[0]),
     nex: clampNex(source.nex),
     patente: String(source.patente || RANKS[0]),
-    pontos: Number.isFinite(points) ? Math.max(0, Math.round(points)) : 0,
+    pontos: Number.isFinite(points) ? Math.round(points) : 0,
   };
 }
 
@@ -497,14 +668,7 @@ function renderActions(selected) {
     ? `Registrando para <strong>${esc(selected.nome)}</strong>.`
     : "Selecione o personagem que realizou a ação.";
   const disabled = selected ? "" : "disabled";
-  const rows = ACTIONS.map((action) => `
-    <li>
-      <button type="button" class="action-btn" data-action="award" data-id="${esc(action.id)}" ${disabled}>
-        <span>${esc(action.label)}</span>
-        <strong>+${action.points}</strong>
-      </button>
-    </li>
-  `).join("");
+  const rows = actionRowsHtml(disabled);
   return `
     <section class="panel panel-actions">
       <h3>Pontuação do MVP</h3>
@@ -523,7 +687,7 @@ function renderHistory(campaign) {
           <time datetime="${esc(entry.quando)}">${esc(formatWhen(entry.quando))}</time>
           <p><strong>${esc(playerName(campaign, entry.jogador))}</strong> · ${esc(entry.acao)}</p>
         </div>
-        <strong class="history-points">+${entry.pontos}</strong>
+        <strong class="${classes("history-points", entry.pontos < 0 && "is-penalty")}">${signedPoints(entry.pontos)}</strong>
         <button type="button" class="btn btn-ghost btn-small" data-action="undo" data-id="${esc(entry.id)}">Desfazer</button>
       </li>
     `).join("")
@@ -587,6 +751,28 @@ function renderCampaign(campaign, flashId) {
     </div>
     </div>
   `);
+}
+
+function renderAwardSheet(player) {
+  const rows = actionRowsHtml("");
+  return `
+    <div class="modal-backdrop">
+      <div class="modal modal-sheet" role="dialog" aria-modal="true" aria-labelledby="award-title">
+        <header class="modal-head">
+          <div class="award-who">
+            ${avatarHtml(player, "avatar-sm")}
+            <div>
+              <p class="kicker">Pontuar</p>
+              <h2 id="award-title">${esc(player.nome)}</h2>
+            </div>
+          </div>
+          <button type="button" class="icon-btn" data-action="close-modal" aria-label="Fechar">✕</button>
+        </header>
+        <p class="hint">${player.pontos} pts nesta sessão. Toque na ação realizada — as penalidades ficam no fim da lista.</p>
+        <ul class="action-list">${rows}</ul>
+      </div>
+    </div>
+  `;
 }
 
 function captureScroll() {
@@ -687,6 +873,8 @@ function render(options = {}) {
       ui.screen = "sheets";
       ui.sheetId = null;
     }
+    syncRoute();
+    hasRendered = true;
     const onCertificate = ui.screen === "certificate" && Boolean(campaign);
     const onSheet = ui.screen === "sheet" || ui.screen === "sheets";
     document.body.classList.toggle("is-campaign", ui.screen === "campaign" && Boolean(campaign));
@@ -728,10 +916,31 @@ function clearPreviewUrl() {
 
 function openModal(html) {
   clearPreviewUrl();
+  clearToast();
   modalRoot.innerHTML = html;
   document.body.classList.add("modal-open");
-  const field = modalRoot.querySelector("input, select, button");
-  if (field) field.focus();
+  const dialog = modalRoot.querySelector("[role=dialog], [role=alertdialog]");
+  if (dialog && !dialog.hasAttribute("tabindex")) dialog.setAttribute("tabindex", "-1");
+  const field = isTouch()
+    ? dialog
+    : modalRoot.querySelector("[data-autofocus], input:not([type=file]):not([type=hidden]), select, textarea, button");
+  if (field && typeof field.focus === "function") field.focus({ preventScroll: true });
+}
+
+function openImage(src, caption, detail) {
+  const safe = imgSrc(src);
+  if (!safe) return;
+  openModal(`
+    <div class="modal-backdrop viewer-backdrop">
+      <figure class="viewer" role="dialog" aria-modal="true" aria-label="${esc(caption || "Imagem")}">
+        <button type="button" class="icon-btn viewer-close" data-action="close-modal" aria-label="Fechar imagem">✕</button>
+        <div class="viewer-stage" data-action="viewer-zoom" title="Toque para ampliar">
+          <img alt="${esc(caption || "")}" src="${safe}">
+        </div>
+        ${caption || detail ? `<figcaption>${caption ? `<strong>${esc(caption)}</strong>` : ""}${detail ? `<span>${esc(detail)}</span>` : ""}</figcaption>` : ""}
+      </figure>
+    </div>
+  `);
 }
 
 function closeModal() {
@@ -752,7 +961,7 @@ function renderCampaignForm(campaign) {
         <label class="field">
           <span>Banner</span>
           <input name="banner" type="file" accept="image/*" data-preview="#banner-preview">
-          <small>A imagem é reduzida antes de ser salva neste navegador.</small>
+          <small>Opcional. A imagem é reduzida antes de ser salva neste navegador.</small>
         </label>
         <div class="preview" id="banner-preview">${previewMarkup(campaign ? campaign.banner : "")}</div>
         <p class="form-error" role="alert"></p>
@@ -777,7 +986,7 @@ function renderPlayerForm(player) {
         <label class="field">
           <span>Token</span>
           <input name="token" type="file" accept="image/*" data-preview="#token-preview" data-preview-shape="token">
-          <small>A imagem do token é reduzida antes de ser salva neste navegador.</small>
+          <small>Opcional. A imagem do token é reduzida antes de ser salva neste navegador.</small>
         </label>
         <div class="preview" id="token-preview">${previewMarkup(player ? player.token : "", true)}</div>
         <label class="field">
@@ -841,10 +1050,6 @@ async function saveCampaign(form) {
     }
     const existing = findCampaign(form.dataset.id || "");
     const file = fieldFile(form, "banner");
-    if (!existing && !file) {
-      showError(form, "Escolha a imagem de banner.");
-      return;
-    }
     if (file && file.size > 12 * 1024 * 1024) {
       showError(form, "Essa imagem é grande demais. Escolha um arquivo de até 12 MB.");
       return;
@@ -910,10 +1115,6 @@ async function savePlayer(form) {
     }
     const existing = campaign.players.find((player) => player.id === (form.dataset.playerId || "")) || null;
     const file = fieldFile(form, "token");
-    if (!existing && !file) {
-      showError(form, "Escolha a imagem do token.");
-      return;
-    }
     if (file && file.size > 12 * 1024 * 1024) {
       showError(form, "Essa imagem é grande demais. Escolha um arquivo de até 12 MB.");
       return;
@@ -1000,7 +1201,13 @@ function award(actionId) {
     return;
   }
   ui.flashPlayerId = player.id;
-  announce(`${player.nome} recebeu ${action.points} pontos: ${action.label}. Total: ${player.pontos}.`);
+  if (modalRoot.innerHTML) {
+    closeModal();
+    toast(`${player.nome}: ${signedPoints(action.points)} pts (${action.label})`, { actionLabel: "Desfazer", action: "undo", id: campaign.historico[0].id });
+  }
+  announce(action.points < 0
+    ? `${player.nome} perdeu ${Math.abs(action.points)} pontos: ${action.label}. Total: ${player.pontos}.`
+    : `${player.nome} recebeu ${action.points} pontos: ${action.label}. Total: ${player.pontos}.`);
   render({ keepScroll: true });
 }
 
@@ -1011,11 +1218,12 @@ function undo(entryId) {
   if (index < 0) return;
   const [entry] = campaign.historico.splice(index, 1);
   const player = campaign.players.find((item) => item.id === entry.jogador);
-  if (player) player.pontos = Math.max(0, player.pontos - entry.pontos);
+  if (player) player.pontos -= entry.pontos;
   if (!persist()) {
     render({ keepScroll: true });
     return;
   }
+  clearToast();
   announce("Lançamento desfeito.");
   render({ keepScroll: true });
 }
@@ -1038,7 +1246,9 @@ function resetSession(campaignId) {
 
 function onClick(event) {
   if (event.target instanceof HTMLElement && event.target.classList.contains("modal-backdrop")) {
-    closeModal();
+    const pressed = backdropPress;
+    backdropPress = null;
+    if (pressed === null || pressed === event.target) closeModal();
     return;
   }
   const el = event.target instanceof Element ? event.target.closest("[data-action]") : null;
@@ -1047,6 +1257,9 @@ function onClick(event) {
   switch (action) {
     case "close-modal":
       closeModal();
+      break;
+    case "viewer-zoom":
+      el.classList.toggle("is-zoomed");
       break;
     case "go-home":
     case "go-hub":
@@ -1128,10 +1341,20 @@ function onClick(event) {
     case "confirm-delete-player":
       deletePlayer(id);
       break;
-    case "select-player":
+    case "select-player": {
+      if (isCompact()) {
+        const campaign = currentCampaign();
+        const player = campaign && campaign.players.find((item) => item.id === id);
+        if (!player) break;
+        ui.selectedPlayerId = id;
+        render({ keepScroll: true });
+        openModal(renderAwardSheet(player));
+        break;
+      }
       ui.selectedPlayerId = ui.selectedPlayerId === id ? null : id;
       render({ keepScroll: true });
       break;
+    }
     case "award":
       award(id);
       break;
@@ -1215,11 +1438,20 @@ document.addEventListener("mousedown", (event) => {
   const card = event.target instanceof Element ? event.target.closest("[data-action='select-player']") : null;
   if (card) event.preventDefault();
 }, true);
+document.addEventListener("pointerdown", (event) => {
+  backdropPress = event.target;
+}, true);
 document.addEventListener("click", onClick);
 document.addEventListener("submit", onSubmit);
 document.addEventListener("change", onChange);
 document.addEventListener("input", onInput);
 document.addEventListener("keydown", onKeydown);
+window.addEventListener("popstate", onPopState);
+window.addEventListener("DOMContentLoaded", () => {
+  if (!hasRendered) render();
+});
+
+applyHash(currentHash());
 
 window.OP = {
   esc,
@@ -1238,4 +1470,8 @@ window.OP = {
   render,
   ui,
   previewMarkup,
+  openImage,
+  toast,
+  clearToast,
+  isCompact,
 };
