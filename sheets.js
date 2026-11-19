@@ -2808,6 +2808,8 @@
         nome: sheet.nome,
         jogador: sheet.jogador,
         classe: sheet.classe,
+        nex: sheet.nex,
+        patente: sheet.patente,
         imagem: sheet.imagem,
         agi: sheet.atributos.agi,
         bonusIniciativa: ini ? periciaTotal(ini) : 0,

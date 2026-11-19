@@ -285,6 +285,7 @@ function normalizePlayer(player) {
     nex: clampNex(source.nex),
     patente: String(source.patente || RANKS[0]),
     pontos: Number.isFinite(points) ? Math.round(points) : 0,
+    sheetId: typeof source.sheetId === "string" ? source.sheetId.replace(/[^\w-]/g, "").slice(0, 80) : "",
   };
 }
 
@@ -309,6 +310,176 @@ function normalizeCampaign(campaign) {
     players: Array.isArray(source.players) ? source.players.map(normalizePlayer) : [],
     historico: Array.isArray(source.historico) ? source.historico.map(normalizeEntry) : [],
   };
+}
+
+/* ───────────── jogadores a partir das fichas ───────────── */
+
+function sheetsForCampaign(campaign) {
+  const list = window.Sheets && typeof window.Sheets.list === "function" ? window.Sheets.list() : [];
+  const fold = (text) => String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return list.map((sheet) => ({
+    sheet,
+    jaNa: campaign.players.some((player) => player.sheetId === sheet.id || fold(player.nome) === fold(sheet.nome)),
+  }));
+}
+
+function renderSheetsPicker(campaign) {
+  const items = sheetsForCampaign(campaign);
+  const livres = items.filter((item) => !item.jaNa).length;
+  const rows = items.length
+    ? items.map(({ sheet, jaNa }) => {
+      const foto = imgSrc(sheet.imagem);
+      return `
+        <label class="ini-pick${jaNa ? " is-in" : ""}">
+          <input type="checkbox" name="ficha" value="${esc(sheet.id)}"${jaNa ? " disabled checked" : " checked"}>
+          <span class="pick-who">
+            ${foto ? `<img class="pick-avatar" alt="" src="${foto}">` : `<span class="pick-avatar pick-avatar-fallback" aria-hidden="true">${esc(initials(sheet.nome))}</span>`}
+            <span><strong>${esc(sheet.nome)}</strong><small>${esc([sheet.classe, `NEX ${sheet.nex}%`, sheet.patente, jaNa ? "já está na campanha" : ""].filter(Boolean).join(" · "))}</small></span>
+          </span>
+        </label>`;
+    }).join("")
+    : `<p class="hint">Nenhuma ficha cadastrada. Crie as fichas em Início → Fichas.</p>`;
+  return `
+    <div class="modal-backdrop">
+      <form class="modal modal-sheet" id="players-sheets-form" novalidate role="dialog" aria-modal="true" aria-labelledby="players-sheets-title">
+        <header class="modal-head">
+          <h2 id="players-sheets-title">Cadastrar das fichas</h2>
+          <button type="button" class="icon-btn" data-action="close-modal" aria-label="Fechar">✕</button>
+        </header>
+        <p class="hint">Marque os personagens que estão nesta campanha. Nome, foto, classe, NEX e patente vêm da ficha.</p>
+        <div class="ini-pick-list">${rows}</div>
+        <p class="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"${livres ? "" : " disabled"}>Cadastrar</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+// A foto da ficha é grande; o token da campanha guarda uma versão menor.
+async function tokenFromSheetImage(src) {
+  const safe = imgSrc(src);
+  if (!safe) return "";
+  try {
+    const blob = await (await fetch(safe)).blob();
+    return await readImage(blob, 320);
+  } catch (err) {
+    return "";
+  }
+}
+
+async function savePlayersFromSheets(form) {
+  const campaign = currentCampaign();
+  if (!campaign) return;
+  const submit = form.querySelector("[type=submit]");
+  if (submit) submit.disabled = true;
+  try {
+    const ids = [...form.querySelectorAll('input[name="ficha"]:checked:not(:disabled)')].map((input) => input.value);
+    if (!ids.length) {
+      showError(form, "Marque pelo menos um personagem.");
+      return;
+    }
+    const fichas = new Map((window.Sheets?.list?.() || []).map((sheet) => [sheet.id, sheet]));
+    const novos = [];
+    for (const id of ids) {
+      const sheet = fichas.get(id);
+      if (!sheet) continue;
+      novos.push(normalizePlayer({
+        id: uid(),
+        nome: sheet.nome,
+        token: await tokenFromSheetImage(sheet.imagem),
+        classe: sheet.classe || CLASSES[0],
+        nex: sheet.nex,
+        patente: sheet.patente || RANKS[0],
+        pontos: 0,
+        sheetId: sheet.id,
+      }));
+    }
+    campaign.players.push(...novos);
+    if (!persist()) {
+      render({ keepScroll: true });
+      return;
+    }
+    closeModal();
+    toast(novos.length === 1 ? "1 personagem cadastrado." : `${novos.length} personagens cadastrados.`);
+    render({ keepScroll: true });
+  } finally {
+    if (submit && submit.isConnected) submit.disabled = false;
+  }
+}
+
+/* ───────────── exportar / importar campanhas ───────────── */
+
+function safeCampaignId(value) {
+  const clean = String(value || "").replace(/[^\w-]/g, "").slice(0, 80);
+  return clean || uid();
+}
+
+function downloadCampaignJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function campaignSlug(nome) {
+  return String(nome || "campanha").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "campanha";
+}
+
+function exportCampaigns(list, filename) {
+  downloadCampaignJson(filename, { tipo: "op-mvp-campanhas", version: 1, exportadoEm: new Date().toISOString(), campaigns: list });
+}
+
+// Mesmo id de uma campanha existente: atualiza no lugar. Senão, entra como nova.
+function importCampaignsFromText(text) {
+  const data = JSON.parse(text);
+  let incoming = [];
+  if (Array.isArray(data)) incoming = data;
+  else if (data && Array.isArray(data.campaigns)) incoming = data.campaigns;
+  else if (data && typeof data === "object" && (data.nome || data.players)) incoming = [data];
+  else throw new Error("formato");
+  const valid = incoming.filter((item) => item && typeof item === "object");
+  if (!valid.length) throw new Error("vazio");
+  const before = state.campaigns.slice();
+  let atualizadas = 0;
+  let novas = 0;
+  valid.forEach((item) => {
+    const campaign = normalizeCampaign(item);
+    campaign.id = safeCampaignId(campaign.id);
+    campaign.players.forEach((player) => { player.id = safeCampaignId(player.id); });
+    const ids = new Set(campaign.players.map((player) => player.id));
+    campaign.historico = campaign.historico
+      .map((entry) => ({ ...entry, id: safeCampaignId(entry.id), jogador: String(entry.jogador).replace(/[^\w-]/g, "") }))
+      .filter((entry) => ids.has(entry.jogador));
+    const index = state.campaigns.findIndex((current) => current.id === campaign.id);
+    if (index >= 0) {
+      state.campaigns[index] = campaign;
+      atualizadas += 1;
+    } else {
+      if (state.campaigns.some((current) => current.id === campaign.id)) campaign.id = uid();
+      state.campaigns.unshift(campaign);
+      novas += 1;
+    }
+  });
+  if (!persist()) {
+    state.campaigns = before;
+    render();
+    return;
+  }
+  const partes = [];
+  if (atualizadas) partes.push(atualizadas === 1 ? "1 campanha atualizada" : `${atualizadas} campanhas atualizadas`);
+  if (novas) partes.push(novas === 1 ? "1 campanha importada" : `${novas} campanhas importadas`);
+  const label = partes.join(", ").replace(/^./, (c) => c.toUpperCase());
+  toast(`${label}.`);
+  announce(`${label}.`);
+  render();
 }
 
 function readStoredCampaigns() {
@@ -558,7 +729,12 @@ function renderCampaigns() {
         <h2>Campanhas</h2>
         <p class="lede">Crie uma campanha com banner, cadastre os jogadores e marque os pontos durante a sessão para definir o MVP.</p>
       </div>
-      <button type="button" class="btn btn-primary" data-action="new-campaign">Nova campanha</button>
+      <div class="head-actions">
+        <button type="button" class="btn btn-primary" data-action="new-campaign">Nova campanha</button>
+        <button type="button" class="btn btn-ghost" data-action="campaign-import">Importar</button>
+        <button type="button" class="btn btn-ghost" data-action="campaign-export-all"${state.campaigns.length ? "" : " disabled"}>Exportar todas</button>
+        <input id="campaign-import-input" type="file" accept="application/json,.json" hidden>
+      </div>
     </div>
     ${cards}
   `);
@@ -729,6 +905,7 @@ function renderCampaign(campaign, flashId) {
       <button type="button" class="btn btn-ghost" data-action="open-campaigns">Campanhas</button>
       <div class="toolbar-right">
         <button type="button" class="btn btn-ghost" data-action="edit-campaign" data-id="${esc(campaign.id)}">Editar</button>
+        <button type="button" class="btn btn-ghost" data-action="campaign-export" data-id="${esc(campaign.id)}">Exportar</button>
         <button type="button" class="btn btn-primary" data-action="open-certificate" data-id="${esc(campaign.id)}" data-from="campaign">MVP</button>
         <button type="button" class="btn btn-ghost" data-action="reset-scores" data-id="${esc(campaign.id)}" ${canReset ? "" : "disabled"}>Zerar pontuação</button>
         <button type="button" class="btn btn-danger" data-action="delete-campaign" data-id="${esc(campaign.id)}">Excluir</button>
@@ -749,7 +926,10 @@ function renderCampaign(campaign, flashId) {
             <h3>Jogadores</h3>
             <p class="meta">${playerCountLabel(campaign.players.length)}</p>
           </div>
-          <button type="button" class="btn btn-primary" data-action="new-player">Cadastrar jogador</button>
+          <div class="head-actions">
+            <button type="button" class="btn btn-ghost" data-action="players-from-sheets">Das fichas</button>
+            <button type="button" class="btn btn-primary" data-action="new-player">Cadastrar jogador</button>
+          </div>
         </div>
         ${renderRankStrip(campaign.players, ui.selectedPlayerId)}
         ${players}
@@ -1387,6 +1567,22 @@ function onClick(event) {
     case "confirm-reset":
       resetSession(id);
       break;
+    case "players-from-sheets": {
+      const campaign = currentCampaign();
+      if (campaign) openModal(renderSheetsPicker(campaign));
+      break;
+    }
+    case "campaign-import":
+      document.getElementById("campaign-import-input")?.click();
+      break;
+    case "campaign-export-all":
+      if (state.campaigns.length) exportCampaigns(state.campaigns, `op-mvp-campanhas-${new Date().toISOString().slice(0, 10)}.json`);
+      break;
+    case "campaign-export": {
+      const campaign = findCampaign(id);
+      if (campaign) exportCampaigns([campaign], `campanha-${campaignSlug(campaign.nome)}.json`);
+      break;
+    }
     default:
       if (window.Initiative && window.Initiative.handleAction(action, el, id)) break;
       if (window.Sheets && window.Sheets.handleAction(action, el, id)) break;
@@ -1403,6 +1599,9 @@ function onSubmit(event) {
   } else if (form.id === "player-form") {
     event.preventDefault();
     void savePlayer(form);
+  } else if (form.id === "players-sheets-form") {
+    event.preventDefault();
+    void savePlayersFromSheets(form);
   } else if (window.Initiative && window.Initiative.handleSubmit(form)) {
     event.preventDefault();
   } else if (window.Sheets && window.Sheets.handleSubmit(form)) {
@@ -1412,6 +1611,25 @@ function onSubmit(event) {
 
 function onChange(event) {
   const target = event.target;
+  if (target instanceof HTMLInputElement && target.id === "campaign-import-input") {
+    const file = target.files && target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        importCampaignsFromText(String(reader.result || ""));
+      } catch (err) {
+        toast("Arquivo inválido. Use um JSON exportado pela tela de campanhas.", { tone: "warn" });
+      }
+      target.value = "";
+    };
+    reader.onerror = () => {
+      toast("Não foi possível ler o arquivo.", { tone: "warn" });
+      target.value = "";
+    };
+    reader.readAsText(file);
+    return;
+  }
   if (window.Initiative && window.Initiative.handleChange(target)) return;
   if (window.Sheets && window.Sheets.handleChange(target)) return;
   if (target instanceof HTMLSelectElement && target.dataset.customTarget) {

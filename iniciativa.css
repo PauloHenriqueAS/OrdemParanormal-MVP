@@ -100,3 +100,9 @@ body.is-initiative main.wrap { padding-bottom: 40px; }
   .ini-hp { max-width: none; }
 }
 .ini-controls .btn { white-space: nowrap; }
+
+/* Seleção de fichas (campanha) */
+.pick-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pick-avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid var(--gold); }
+.pick-avatar-fallback { display: grid; place-items: center; background: rgba(212, 175, 95, 0.12); color: var(--gold-soft); font-size: 0.8rem; font-weight: 700; }
+.section-head .head-actions { width: auto; flex-wrap: wrap; justify-content: flex-end; }
