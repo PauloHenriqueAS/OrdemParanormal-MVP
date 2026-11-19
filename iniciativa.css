@@ -1,0 +1,102 @@
+
+/* ───────────── Iniciativa ───────────── */
+.hub-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.is-initiative .wrap { width: min(980px, calc(100% - 80px)); }
+body.is-initiative main.wrap { padding-bottom: 40px; }
+
+.ini-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(212, 175, 95, 0.2);
+}
+.ini-round, .ini-now { display: grid; gap: 2px; }
+.ini-round span, .ini-now span { color: var(--muted); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.ini-round strong { font-family: Palatino, Georgia, serif; font-size: 2.2rem; line-height: 1; color: var(--gold-soft); text-align: center; }
+.ini-round { padding: 6px 14px; border: 1px solid var(--edge-strong, rgba(212,175,95,.6)); border-radius: 10px; text-align: center; }
+.ini-now strong { font-family: Palatino, Georgia, serif; font-size: 1.35rem; overflow-wrap: anywhere; }
+.ini-controls { display: flex; gap: 8px; }
+.ini-next { min-width: 170px; }
+.ini-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+
+.ini-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ini-row {
+  display: grid;
+  grid-template-columns: 34px 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(212, 175, 95, 0.22);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius, 8px);
+  background: #12100c;
+  transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+.ini-row.is-threat { border-left-color: var(--danger); }
+.ini-row.is-current {
+  border-color: var(--gold-soft);
+  box-shadow: 0 0 0 1px rgba(243, 230, 196, 0.35), 0 0 24px -6px rgba(212, 175, 95, 0.55);
+  background: linear-gradient(90deg, rgba(212, 175, 95, 0.12), #12100c 60%);
+}
+.ini-row.is-down { opacity: 0.55; }
+.ini-row.is-down .ini-name strong { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.ini-order { display: grid; justify-items: center; gap: 2px; }
+.ini-pos { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.ini-move { width: 30px; height: 24px; padding: 0; border: 1px solid rgba(212, 175, 95, 0.3); border-radius: 6px; background: transparent; color: var(--gold); font-size: 0.65rem; line-height: 1; }
+.ini-move:disabled { opacity: 0.25; cursor: default; }
+
+.ini-value { display: grid; gap: 2px; text-align: center; }
+.ini-value span { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.ini-value input { width: 100%; height: 48px; padding: 0; text-align: center; font-family: Palatino, Georgia, serif; font-size: 1.5rem; font-weight: 700; color: var(--gold-soft); -moz-appearance: textfield; appearance: textfield; }
+.ini-value input::-webkit-outer-spin-button, .ini-value input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.ini-body { display: grid; gap: 6px; min-width: 0; }
+.ini-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ini-name strong { display: block; font-size: 1rem; overflow-wrap: anywhere; }
+.ini-name small { display: block; color: var(--muted); font-size: 0.76rem; line-height: 1.3; }
+.ini-avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid var(--gold); }
+.ini-avatar-fallback { display: grid; place-items: center; background: rgba(212, 175, 95, 0.12); color: var(--gold-soft); font-weight: 700; }
+.ini-avatar-fallback.is-threat { border-color: var(--danger); background: rgba(226, 61, 82, 0.12); color: #ff8a98; }
+.ini-badge { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--gold); color: #1a1408; font-style: normal; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle; text-decoration: none; display: inline-block; }
+.ini-badge.is-down { background: var(--danger); color: #fff; }
+
+.ini-hp { display: grid; grid-template-columns: 36px 32px minmax(0, 1fr) 32px 36px; gap: 4px; align-items: center; max-width: 380px; }
+.ini-step { height: 30px; padding: 0; border: 1px solid rgba(212, 175, 95, 0.35); border-radius: 6px; background: var(--field); color: var(--ink); font-size: 0.8rem; }
+.ini-step:hover { border-color: var(--gold); }
+.ini-hp-bar { position: relative; height: 26px; border-radius: 6px; background: rgba(226, 61, 82, 0.12); overflow: hidden; }
+.ini-hp-bar span { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #8f1d2c, #e23d52); transition: width 0.25s; }
+.ini-hp-bar b { position: relative; display: grid; place-items: center; height: 100%; font-size: 0.82rem; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+.ini-no-hp { margin: 0; font-size: 0.78rem; }
+.ini-notes { margin: 0; color: var(--muted); font-size: 0.8rem; font-style: italic; }
+.ini-actions { display: flex; flex-direction: column; gap: 4px; }
+.ini-actions .btn { min-width: 64px; }
+.ini-foot { margin: 12px 0 0; font-size: 0.8rem; }
+
+.ini-pick-list { display: grid; gap: 6px; margin-bottom: 12px; max-height: 50vh; overflow: auto; }
+.ini-pick { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid rgba(212, 175, 95, 0.22); border-radius: 8px; cursor: pointer; }
+.ini-pick:has(input:checked:not(:disabled)) { border-color: var(--gold); background: rgba(212, 175, 95, 0.08); }
+.ini-pick.is-in { opacity: 0.5; cursor: default; }
+.ini-pick small { display: block; color: var(--muted); font-size: 0.78rem; }
+.ini-pick input, .ini-check input { width: 18px; height: 18px; accent-color: var(--gold); }
+.ini-check { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; color: var(--muted); font-size: 0.9rem; }
+
+@media (max-width: 1100px) {
+  body.is-initiative .wrap { width: min(760px, calc(100% - 64px)); }
+}
+@media (max-width: 860px) {
+  .hub-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  body.is-initiative .wrap { width: calc(100% - 24px); }
+  .ini-bar { grid-template-columns: auto minmax(0, 1fr); }
+  .ini-controls { grid-column: 1 / -1; }
+  .ini-controls .btn { flex: 1; }
+  .ini-next { min-width: 0; }
+  .ini-row { grid-template-columns: 30px 56px minmax(0, 1fr); }
+  .ini-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  .ini-hp { max-width: none; }
+}
+.ini-controls .btn { white-space: nowrap; }

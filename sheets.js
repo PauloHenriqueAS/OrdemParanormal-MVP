@@ -768,6 +768,7 @@
         </div>
         <div class="head-actions">
           <button type="button" class="btn btn-primary" data-action="sheet-new">Nova ficha</button>
+          <button type="button" class="btn btn-ghost" data-action="open-initiative">Iniciativa</button>
           <button type="button" class="btn btn-ghost" data-action="sheet-import">Importar</button>
           <button type="button" class="btn btn-ghost" data-action="sheet-export-all"${sheetsState.sheets.length ? "" : " disabled"}>Exportar todas</button>
           <input id="sheet-import-input" type="file" accept="application/json,.json" hidden>
@@ -2207,16 +2208,31 @@
     else if (data && Array.isArray(data.sheets)) incoming = data.sheets;
     else if (data && typeof data === "object" && data.nome) incoming = [data];
     else throw new Error("formato");
-    const normalized = incoming
-      .filter((item) => item && typeof item === "object")
-      .map((item) => ({ ...normalizeSheet(item), id: uid() }));
-    if (!normalized.length) throw new Error("vazio");
-    sheetsState.sheets.unshift(...normalized);
+    const valid = incoming.filter((item) => item && typeof item === "object");
+    if (!valid.length) throw new Error("vazio");
+    // Mesmo id de uma ficha já existente: atualiza no lugar. Senão, entra como ficha nova.
+    const before = sheetsState.sheets.slice();
+    let atualizadas = 0;
+    let novas = 0;
+    valid.forEach((item) => {
+      const sheet = normalizeSheet(item);
+      const index = item.id ? sheetsState.sheets.findIndex((current) => current.id === sheet.id) : -1;
+      if (index >= 0) {
+        sheetsState.sheets[index] = sheet;
+        atualizadas += 1;
+      } else {
+        sheetsState.sheets.unshift({ ...sheet, id: uid() });
+        novas += 1;
+      }
+    });
     if (!persistSheets()) {
-      sheetsState.sheets = sheetsState.sheets.filter((sheet) => !normalized.includes(sheet));
+      sheetsState.sheets = before;
       return;
     }
-    const label = normalized.length === 1 ? "Ficha importada" : `${normalized.length} fichas importadas`;
+    const partes = [];
+    if (atualizadas) partes.push(atualizadas === 1 ? "1 ficha atualizada" : `${atualizadas} fichas atualizadas`);
+    if (novas) partes.push(novas === 1 ? "1 ficha importada" : `${novas} fichas importadas`);
+    const label = partes.join(", ").replace(/^./, (c) => c.toUpperCase());
     op().toast?.(`${label}.`);
     op().announce?.(`${label}.`);
     op().render?.();
@@ -2784,6 +2800,35 @@
     flush,
     get: findSheet,
     getCount: () => sheetsState.sheets.length,
+    // Usado pelo módulo de iniciativa.
+    list: () => sheetsState.sheets.map((sheet) => {
+      const ini = sheet.pericias.find((item) => item.id === "iniciativa");
+      return {
+        id: sheet.id,
+        nome: sheet.nome,
+        jogador: sheet.jogador,
+        classe: sheet.classe,
+        imagem: sheet.imagem,
+        agi: sheet.atributos.agi,
+        bonusIniciativa: ini ? periciaTotal(ini) : 0,
+        pv: sheet.pv, pvMax: sheet.pvMax,
+        san: sheet.san, sanMax: sheet.sanMax,
+        pe: sheet.pe, peMax: sheet.peMax,
+        defesa: sheet.defesa,
+        fim: sheet.fim,
+      };
+    }),
+    adjustVital: (sheetId, kind, delta) => {
+      const sheet = findSheet(sheetId);
+      if (!sheet || !VITALS[kind]) return null;
+      const antes = sheet[kind];
+      const teto = delta > 0 ? Math.max(sheet[`${kind}Max`], antes) : 9999;
+      sheet[kind] = clampInt(antes + delta, 0, teto, antes);
+      registrarPerda(sheet, kind, antes, sheet[kind]);
+      syncCrise(sheet);
+      persistSheets();
+      return sheet[kind];
+    },
   };
 
   if (window.OP && typeof window.OP.render === "function") {

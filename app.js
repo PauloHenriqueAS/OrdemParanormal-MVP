@@ -116,6 +116,7 @@ function routeHash() {
   if (ui.screen === "campaign" && ui.campaignId) return `#/campanha/${encodeURIComponent(ui.campaignId)}`;
   if (ui.screen === "certificate" && ui.campaignId) return `#/certificado/${encodeURIComponent(ui.campaignId)}`;
   if (ui.screen === "sheets") return "#/fichas";
+  if (ui.screen === "initiative") return "#/iniciativa";
   if (ui.screen === "sheet" && ui.sheetId) return `#/ficha/${encodeURIComponent(ui.sheetId)}`;
   return "#/";
 }
@@ -146,6 +147,8 @@ function applyHash(hash) {
     ui.certificateFrom = "campaigns";
   } else if (name === "fichas") {
     ui.screen = "sheets";
+  } else if (name === "iniciativa") {
+    ui.screen = "initiative";
   } else if (name === "ficha" && id) {
     ui.screen = "sheet";
     ui.sheetId = id;
@@ -503,6 +506,7 @@ function updateTopbar() {
     campaign: "Pontuação do MVP",
     certificate: "Certificado de MVP",
     sheets: "Fichas de personagem",
+    initiative: "Controle de iniciativa",
     sheet: "Ficha de personagem",
   };
   sub.textContent = labels[ui.screen] || "OP-MVP";
@@ -530,6 +534,12 @@ function renderHub() {
         <h3>Fichas</h3>
         <p>Abra, edite e exporte as fichas de personagem da Ordem.</p>
         <span class="hub-meta">${sheetCount === 1 ? "1 ficha" : `${sheetCount} fichas`}</span>
+      </button>
+      <button type="button" class="hub-card" data-action="open-initiative">
+        <p class="kicker">Combate</p>
+        <h3>Iniciativa</h3>
+        <p>Ordene agentes e ameaças, passe os turnos e controle a vida de cada um.</p>
+        <span class="hub-meta">${window.Initiative ? window.Initiative.summary() : "Ordem de turnos"}</span>
       </button>
     </div>
   `;
@@ -881,8 +891,11 @@ function render(options = {}) {
     document.body.classList.toggle("is-certificate", onCertificate);
     document.body.classList.toggle("is-sheets", onSheet);
     document.body.classList.toggle("is-hub", ui.screen === "hub");
+    document.body.classList.toggle("is-initiative", ui.screen === "initiative");
     if (onCertificate) {
       document.title = `Certificado de MVP — ${campaign.nome}`;
+    } else if (ui.screen === "initiative") {
+      document.title = "Iniciativa — OP-MVP";
     } else if (window.Sheets && (ui.screen === "sheets" || ui.screen === "sheet")) {
       document.title = window.Sheets.titleFor(ui.screen) || "OP-MVP";
     } else {
@@ -894,6 +907,7 @@ function render(options = {}) {
     else if (ui.screen === "campaign" && campaign) html = renderCampaign(campaign, flashId);
     else if (ui.screen === "campaigns") html = renderCampaigns();
     else if ((ui.screen === "sheets" || ui.screen === "sheet") && window.Sheets) html = window.Sheets.render(ui.screen);
+    else if (ui.screen === "initiative" && window.Initiative) html = window.Initiative.render();
     else html = renderHub();
     app.innerHTML = html;
     if (position) {
@@ -1374,6 +1388,7 @@ function onClick(event) {
       resetSession(id);
       break;
     default:
+      if (window.Initiative && window.Initiative.handleAction(action, el, id)) break;
       if (window.Sheets && window.Sheets.handleAction(action, el, id)) break;
       break;
   }
@@ -1388,6 +1403,8 @@ function onSubmit(event) {
   } else if (form.id === "player-form") {
     event.preventDefault();
     void savePlayer(form);
+  } else if (window.Initiative && window.Initiative.handleSubmit(form)) {
+    event.preventDefault();
   } else if (window.Sheets && window.Sheets.handleSubmit(form)) {
     event.preventDefault();
   }
@@ -1395,6 +1412,7 @@ function onSubmit(event) {
 
 function onChange(event) {
   const target = event.target;
+  if (window.Initiative && window.Initiative.handleChange(target)) return;
   if (window.Sheets && window.Sheets.handleChange(target)) return;
   if (target instanceof HTMLSelectElement && target.dataset.customTarget) {
     const field = document.querySelector(target.dataset.customTarget);
